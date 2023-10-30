@@ -19,12 +19,35 @@ typedef int64_t s64;
 
 #pragma pack(push, 1)
 
+/// @brief Subcommand transfer packet
 struct brcm_hdr {
+    /// @brief Command byte
     u8 cmd;
+    /// @brief Packet number, increment by 1 for each packet and loops in 0x0-0xF range.
     u8 timer;
+    /// @brief Rumble data for the left controller
     u8 rumble_l[4];
+    /// @brief  Rumble data for the right controller
     u8 rumble_r[4];
 };
+
+//* Rumble data details:
+/* Byte
+    #0: 
+        - High band frequency, range x04 (81.75 Hz) to xFC (313.14 Hz), steps of 0x04;
+        - Frequency increases exponentially;
+    #1: 
+        - High band amplitude, range of x00 (0.0f) to xC8 (1.0f), steps of 0x02;
+        - LSB enable high band higher frequencies, which will range for 320Hz to 1252.57Hz;
+        - Going above xC8 will damage the linear actuators (~ the brrr machines)
+    #2: 
+        - Low band frequency, range x01 (40.87 Hz) to x7F (626.28Hz);
+        - MSB enables intermediate LF amplitude;
+        - Frequency increases exponentially;
+    #3: 
+        - Low band amplitude, range x40 (0.0f) to x72 (1.0f);
+        - Going above x72 will damage the linear actuators;
+    */
 
 struct brcm_cmd_01 {
     u8 subcmd;

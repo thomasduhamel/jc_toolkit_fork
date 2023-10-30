@@ -511,44 +511,47 @@ int dump_spi(const char *dev_name) {
 
 int send_rumble() {
     int res;
+
+    // Command-buffer sent to the controller
     u8 buf[49];
+    // Controllers input report (basically answer-buffer)
     u8 buf2[49];
     
     //Enable Vibration
-    memset(buf, 0, sizeof(buf));
-    auto hdr = (brcm_hdr *)buf;
-    auto pkt = (brcm_cmd_01 *)(hdr + 1);
-    hdr->cmd = 0x01;
-    hdr->timer = timming_byte & 0xF;
-    timming_byte++;
-    pkt->subcmd = 0x48;
-    pkt->subcmd_arg.arg1 = 0x01;
-    res = hid_write(handle, buf, sizeof(buf));
-    res = hid_read_timeout(handle, buf2, 0, 64);
+    memset(buf, 0, sizeof(buf));                // fill with 0s
+    auto hdr = (brcm_hdr *)buf;                 // buffer formated to carry a command (header included) 
+    auto pkt = (brcm_cmd_01 *)(hdr + 1);        // buffer format to carry a command (without header, starts at the second byte, hence the hdr + 1)
+    hdr->cmd = 0x01;                            // generic command ID, for rumble data and subcommand
+    hdr->timer = timming_byte & 0xF;            // packet count modulo 0xF
+    timming_byte++;                             // holy increments
+    pkt->subcmd = 0x48;                         // Vibration dis/enable subcommand ID
+    pkt->subcmd_arg.arg1 = 0x01;                // Argument for enabling (disable is 0x00)
+    res = hid_write(handle, buf, sizeof(buf));  // Send this bad boy to the controller referenced by handle
+    res = hid_read_timeout(handle, buf2, 0, 64);// Wait for the answer with 64ms of timeout
 
     //New vibration like switch
     Sleep(16);
     //Send confirmation 
-    memset(buf, 0, sizeof(buf));
-    hdr->cmd = 0x01;
-    hdr->timer = timming_byte & 0xF;
-    timming_byte++;
-    hdr->rumble_l[0] = 0xc2;
-    hdr->rumble_l[1] = 0xc8;
-    hdr->rumble_l[2] = 0x03;
-    hdr->rumble_l[3] = 0x72;
-    memcpy(hdr->rumble_r, hdr->rumble_l, sizeof(hdr->rumble_l));
-    res = hid_write(handle, buf, sizeof(buf));
-    res = hid_read_timeout(handle, buf2, 0, 64);
+    memset(buf, 0, sizeof(buf));                // Clean the slate
+    hdr->cmd = 0x01;                            // generic command ID
+    hdr->timer = timming_byte & 0xF;            // packet count
+    timming_byte++;                             // increment
+    hdr->rumble_l[0] = 0xc2;                    // 226Hz    HF-frequency => some kind of A/A#
+    hdr->rumble_l[1] = 0xc8;                    // 1.003f   HF-amplitude
+    hdr->rumble_l[2] = 0x03;                    // 43Hz     LF-frequency => a F
+    hdr->rumble_l[3] = 0x72;                    // 1.003f     LF-amplitude
+    memcpy(hdr->rumble_r, hdr->rumble_l, sizeof(hdr->rumble_l));    // Same for both controller
+    res = hid_write(handle, buf, sizeof(buf));  // Send it
+    res = hid_read_timeout(handle, buf2, 0, 64);// Wait for answer with 64ms of timeout
 
     Sleep(81);
 
     hdr->timer = timming_byte & 0xF;
     timming_byte++;
-    hdr->rumble_l[0] = 0x00;
-    hdr->rumble_l[1] = 0x01;
-    hdr->rumble_l[2] = 0x40;
-    hdr->rumble_l[3] = 0x40;
+    hdr->rumble_l[0] = 0x00;                    // 320Hz => D#/E
+    hdr->rumble_l[1] = 0x01;                    // 0.230f
+    hdr->rumble_l[2] = 0x40;                    // 160Hz => D#/E
+    hdr->rumble_l[3] = 0x40;                    // 0.010f
     memcpy(hdr->rumble_r, hdr->rumble_l, sizeof(hdr->rumble_l));
     res = hid_write(handle, buf, sizeof(buf));
     res = hid_read_timeout(handle, buf2, 0, 64);
@@ -567,7 +570,7 @@ int send_rumble() {
 
     Sleep(5);
 
-    //Disable vibration
+    //Disable vibration (and one last rumble)
     memset(buf, 0, sizeof(buf));
     hdr = (brcm_hdr *)buf;
     pkt = (brcm_cmd_01 *)(hdr + 1);
@@ -584,6 +587,7 @@ int send_rumble() {
     res = hid_write(handle, buf, sizeof(buf));
     res = hid_read_timeout(handle, buf, 0, 64);
 
+    // Hit the lights
     memset(buf, 0, sizeof(buf));
     hdr = (brcm_hdr *)buf;
     pkt = (brcm_cmd_01 *)(hdr + 1);

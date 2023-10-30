@@ -609,6 +609,11 @@ err:
 		return NULL;
 }
 
+/// @brief Send a data buffer of length to the device dev
+/// @param dev 
+/// @param data 
+/// @param length 
+/// @return 
 int HID_API_EXPORT HID_API_CALL hid_write(hid_device *dev, const unsigned char *data, size_t length)
 {
 	DWORD bytes_written;
